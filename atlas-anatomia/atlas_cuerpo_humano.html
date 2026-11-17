@@ -105,6 +105,8 @@
   #detailDesc{margin:0;color:var(--muted);font-size:1rem;line-height:1.65}
   .detail-system{display:flex;align-items:center;gap:8px;margin:16px 0 4px;font-weight:650}
   #detailMeta{display:block;margin-top:4px;color:var(--muted)}
+  #detailPanelToggle{display:none;width:100%;margin-top:12px;align-items:center;justify-content:center;gap:7px;background:rgba(255,210,74,.09);border-color:rgba(255,210,74,.28)}
+  #detailPanelToggle svg{width:16px;height:16px;transition:transform .28s cubic-bezier(.16,1,.3,1)}
   .detail-rule{height:1px;background:var(--line);margin:20px 0}
   .detail-actions{display:grid;gap:8px}
   .detail-actions button{min-height:45px;display:flex;align-items:center;justify-content:center;gap:8px}
@@ -156,10 +158,22 @@
     #top{top:10px;left:128px;right:10px;transform:none;max-width:none;flex-wrap:nowrap;overflow-x:auto;justify-content:flex-start}
     #top button{padding:6px 9px;font-size:.85rem;white-space:nowrap}
     #credit{display:none}
-    #detail{top:auto;left:8px;right:8px;bottom:8px;width:auto;max-height:min(48dvh,430px);padding:15px;border-radius:16px;animation-name:detailUp}
+    #info{bottom:8px;width:calc(100vw - 16px);padding:10px 12px;max-height:190px;overflow:hidden}
+    #info h3{display:-webkit-box;overflow:hidden;-webkit-box-orient:vertical;-webkit-line-clamp:2;font-size:1rem;line-height:1.3}
+    #info p{margin:4px 0 8px;font-size:.8rem;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+    #selectionDescWrap{display:none}
+    #info .row{flex-wrap:nowrap;overflow-x:auto;scrollbar-width:none;padding-bottom:2px}
+    #info .row::-webkit-scrollbar{display:none}
+    #info .row button{flex:none;white-space:nowrap;padding:7px 10px}
+    #detail{top:auto;left:8px;right:8px;bottom:8px;width:auto;max-height:min(62dvh,560px);padding:15px;border-radius:16px;animation-name:detailUp;transition:max-height .32s cubic-bezier(.16,1,.3,1)}
     @keyframes detailUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:none}}
     #detail h2{margin-top:16px;font-size:1.55rem}
     #detailDesc{font-size:.92rem;line-height:1.5}
+    #detailPanelToggle{display:flex}
+    #detail.mobile-compact{max-height:min(220px,31dvh);overflow:hidden}
+    #detail.mobile-compact #detailDesc,#detail.mobile-compact .edu-grid,#detail.mobile-compact #tour,#detail.mobile-compact .detail-rule,#detail.mobile-compact .detail-actions,#detail.mobile-compact #detailHelp{display:none}
+    #detail.mobile-compact #detailPanelToggle svg{transform:rotate(180deg)}
+    #detail.mobile-compact .detail-system{margin-top:10px}
     .detail-rule{margin:14px 0}
     .detail-actions{grid-template-columns:1fr 1fr}
     #detailView{grid-column:1/-1}
@@ -237,7 +251,7 @@
   <p id="hint">Toca una estructura para ver su información</p>
   <div id="sel" hidden>
     <h3 id="name"></h3>
-    <p><span class="tag"><i class="dot" id="sdot"></i><span id="sname"></span></span> — <span id="sdesc"></span></p>
+    <p><span class="tag"><i class="dot" id="sdot"></i><span id="sname"></span></span><span id="selectionDescWrap"> — <span id="sdesc"></span></span></p>
     <div class="row"><button id="enlarge" class="primary"><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="11" cy="11" r="7"/><path d="m16 16 4 4M11 8v6M8 11h6"/></svg> Ver en grande</button><button id="iso">Aislar</button><button id="hide">Ocultar</button><button id="focus">Centrar</button><button id="clear">Quitar selección</button></div>
   </div>
 </section>
@@ -251,6 +265,7 @@
   <p id="detailDesc"></p>
   <div class="detail-system"><i class="dot" id="detailDot"></i><span id="detailSystem"></span></div>
   <small id="detailMeta"></small>
+  <button id="detailPanelToggle" aria-expanded="false"><span id="detailPanelToggleText">Ver teoría y controles</span><svg aria-hidden="true" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m6 9 6 6 6-6"/></svg></button>
   <dl class="edu-grid">
     <div class="edu-item wide"><dt>Nombre de la estructura</dt><dd id="eduSpanish"></dd></div>
     <div class="edu-item wide"><dt>Función principal</dt><dd id="eduFunction"></dd></div>
@@ -348,7 +363,7 @@ async function main(){
   const cache = {};
   let sex = null, keys = [], mats = [], meshes = [], sysOn = [], H = 1.7, selected = null, isolated = null;
   let detailMode = false, detailMeshes = [], detailSet = new Set(), detailContextSet = new Set(), detailContext = false, detailSystem = -1, detailContextSystems = [], detailReturn = null;
-  let detailBase = null, heartTour = [], tourIndex = -1;
+  let detailBase = null, heartTour = [], tourIndex = -1, detailPanelExpanded = false;
   let labelsOn = false, labelNodes = new Map();
   let quizActive = false, quizItems = [], quizIndex = 0, quizScore = 0, quizAttempts = 0, quizLocked = false, quizLabelsBefore = false, quizLayerBefore = null, quizSysBefore = null, quizReturn = null;
   let home = {t:new THREE.Vector3(0, .85, 0), r:3.5, th:0.5, ph:1.42};
@@ -587,9 +602,17 @@ async function main(){
     key.position.copy(camera.position).add(new THREE.Vector3(1.2, 1.5, 0.5));
     rim.position.set(-camera.position.x, camera.position.y + 1, -camera.position.z);
   }
+  function syncDetailPanel(){
+    const mobile = innerWidth <= 760, compact = detailMode && mobile && !detailPanelExpanded;
+    $("detail").classList.toggle("mobile-compact", compact);
+    $("detailPanelToggle").hidden = !mobile;
+    $("detailPanelToggle").setAttribute("aria-expanded", String(mobile && detailPanelExpanded));
+    $("detailPanelToggleText").textContent = compact ? "Ver teoría y controles" : "Ocultar teoría y controles";
+  }
   function resize(){
     const w = innerWidth, h = innerHeight; renderer.setSize(w, h, false); camera.aspect = w/h; camera.clearViewOffset();
     if (detailMode && w > 760){ const panel = Math.min(430, Math.max(340, w*.3)); camera.setViewOffset(w + panel, h, panel, 0, w, h); }
+    syncDetailPanel();
     camera.updateProjectionMatrix(); dirty = true;
   }
   addEventListener("resize", resize); resize();
@@ -732,12 +755,18 @@ async function main(){
     $("sdot").style.background = "#" + SYS[k][1].toString(16).padStart(6, "0");
     refresh(); if (focus) focusOn(m);
   }
-  function focusOn(m){ const s = m.geometry.boundingSphere; go({t:s.center, r:clampR(Math.max(s.radius*5.5, H*0.18))}); }
+  function focusOn(m){
+    const s = m.geometry.boundingSphere, r = clampR(Math.max(s.radius*5.5, H*0.18)), t = s.center.clone();
+    if (innerWidth <= 760) t.y -= r*.08;
+    go({t, r});
+  }
   function focusMany(group){
     if (!group.length) return;
     const box = new THREE.Box3(); group.forEach(m => box.union(m.geometry.boundingBox));
-    const sphere = box.getBoundingSphere(new THREE.Sphere());
-    go({t:sphere.center, r:clampR(Math.max(sphere.radius*4.4, H*0.075))});
+    const sphere = box.getBoundingSphere(new THREE.Sphere()), mobile = innerWidth <= 760;
+    const r = clampR(Math.max(sphere.radius*(mobile ? 4.9 : 4.4), H*(mobile ? .085 : .075))), t = sphere.center.clone();
+    if (mobile) t.y -= r*(detailPanelExpanded ? .055 : .12);
+    go({t, r});
   }
   function contextMeshes(){
     const box = new THREE.Box3(); detailMeshes.forEach(m => box.union(m.geometry.boundingBox));
@@ -803,7 +832,7 @@ async function main(){
   function showDetail(group, options = {}){
     group = [...new Set(group)].filter(Boolean); if (!group.length) return;
     if (!detailMode) detailReturn = {t:goal.t.clone(), r:goal.r, th:goal.th, ph:goal.ph, isolated};
-    detailMode = true; detailMeshes = group; detailSet = new Set(group); detailContext = false; isolated = null;
+    detailMode = true; detailMeshes = group; detailSet = new Set(group); detailContext = false; detailPanelExpanded = false; isolated = null;
     detailSystem = options.systemIndex ?? group[0].userData.sys;
     detailContextSystems = options.contextSystems || [detailSystem];
     detailBase = {...options, group:[...group], systemIndex:detailSystem, contextSystems:[...detailContextSystems]};
@@ -825,7 +854,7 @@ async function main(){
   }
   function closeDetail(restore = true){
     if (!detailMode) return;
-    detailMode = false; detailContext = false; detailMeshes = []; detailSet = new Set(); detailContextSet = new Set(); detailContextSystems = []; detailBase = null; heartTour = []; tourIndex = -1;
+    detailMode = false; detailContext = false; detailPanelExpanded = false; detailMeshes = []; detailSet = new Set(); detailContextSet = new Set(); detailContextSystems = []; detailBase = null; heartTour = []; tourIndex = -1;
     $("detail").hidden = true; document.body.classList.remove("detail-mode");
     $("capturePanel").hidden = true; $("captureToggle").classList.remove("on");
     spin = false; $("spin").classList.remove("on"); $("detailSpin").classList.remove("on");
@@ -905,7 +934,7 @@ async function main(){
     if (quizActive){ answerQuizHits(hits); return; }
     const hit = hits[0];
     if (detailMode){ if (hit) showDetail([hit.object]); return; }
-    select(hit ? hit.object : null, false);
+    select(hit ? hit.object : null, !!hit && innerWidth <= 760);
   }
 
   // ---------- controles ----------
@@ -934,6 +963,10 @@ async function main(){
     openMainSystem(button.dataset.mainSystem);
   };
   $("detailClose").onclick = () => closeDetail();
+  $("detailPanelToggle").onclick = () => {
+    detailPanelExpanded = !detailPanelExpanded; syncDetailPanel();
+    focusMany(detailContext ? [...detailContextSet] : detailMeshes);
+  };
   $("detailOnly").onclick = () => setDetailView(false);
   $("detailContext").onclick = () => setDetailView(true);
   $("detailSpin").onclick = () => { spin = !spin; $("detailSpin").classList.toggle("on", spin); };
